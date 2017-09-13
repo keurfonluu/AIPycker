@@ -11,7 +11,7 @@ first break arrival times.
 :Author: Keurfon Luu
 :Web site: https://github.com/keurfonluu/pycker
 :Copyright: This document has been placed in the public domain.
-:License: StochOPy is released under the MIT License.
+:License: Pycker is released under the MIT License.
 
 **NOTE**: Pycker has been implemented in the frame of my Ph. D. thesis. If
 you find any error or bug, or if you have any suggestion, please don't hesitate
