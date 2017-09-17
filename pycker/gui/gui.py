@@ -13,12 +13,12 @@ from matplotlib.gridspec import GridSpec
 from matplotlib.ticker import FormatStrFormatter
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 
-from obspy import read
 from obspy.signal.filter import lowpass, highpass
 
 import numpy as np
 from ..pick import Pick
 from ..wiggle import wiggle
+from ..read_stream import StreamReader
 
 import os, sys
 if sys.version_info[0] < 3:
@@ -63,7 +63,6 @@ class PyckerGUI():
     _first_import = True
     _current_file = None
     _current_index = None
-    FORMATS = [ "miniseed", "mseed", "reftek", "sac", "seg2", "sg2", "segy", "sgy", "su" ]
     UNITS = [ "samples", "s", "ms", "us" ]
     
     def __init__(self, master, ncolumn = 2):
@@ -78,6 +77,7 @@ class PyckerGUI():
         default_font.configure(family = "Helvetica", size = 9)
         master.option_add("*Font", default_font)
         
+        self._stread = StreamReader()
         self.define_variables()
         self.trace_variables()
         self.init_variables()
@@ -149,7 +149,6 @@ class PyckerGUI():
         self.frame1 = ttk.LabelFrame(self.data_container, text = "Data", borderwidth = 2, relief = "groove", width = 330, height = 250)
         self.frame1.grid_columnconfigure(0, weight = 1)
         self.frame1.grid_rowconfigure(0, weight = 1)
-#        self.frame1.grid_propagate(False)
         self.frame1.grid(row = 0, column = 0)
         
         # directory
@@ -255,13 +254,8 @@ class PyckerGUI():
                 self._first_import = False
             self.init_frame2()
             
-            # List all files in data directory (alphabetic order)
-            filenames = os.listdir(dirname)
-            filenames.sort()
-            self._filenames = []
-            for filename in filenames:
-                if os.path.isfile(dirname + filename) and self._format_ok(filename):
-                    self._filenames.append(filename)
+            # List all files in data directory
+            self._filenames = self._stread.read_dir(dirname)
             nsrc = len(self._filenames)
             self.picks = [ None ] * nsrc
             
@@ -356,7 +350,9 @@ class PyckerGUI():
         if self.plot_type.get() == 0:
             for k, pick in enumerate(self.picks[self._current_index]):
                 if pick is not None and pick.index is not None:
-                    idx = pick.index
+                    idx = (pick.time - self._starttime) * pick.sampling_rate + pick.shift
+                    if self.delay.get():
+                        idx -= self._delay2samples()
                     if self.taxis_seconds.get():
                         idx /= self.sampling_rate.get()
                         title = "Pick = %s" % self._tobs2str(idx)
@@ -373,7 +369,9 @@ class PyckerGUI():
         else:
             for k, pick in enumerate(self.picks[self._current_index]):
                 if pick is not None and pick.index is not None:
-                    idx = pick.index
+                    idx = (pick.time - self._starttime) * pick.sampling_rate + pick.shift
+                    if self.delay.get():
+                        idx -= self._delay2samples()
                     if self.taxis_seconds.get():
                         idx /= self.sampling_rate.get()
                     if self._axlines[k] is None:
@@ -482,31 +480,8 @@ class PyckerGUI():
             print(string)
         self.canvas.draw()
     
-    def _format_ok(self, filename):
-        ext = os.path.splitext(filename)[1][1:].lower()
-        if ext not in self.FORMATS:
-            return False
-        else:
-            return True
-    
-    def _read_file(self, filename):
-        ext = os.path.splitext(filename)[1][1:].lower()
-        if ext in [ "miniseed", "mseed" ]:
-            st = read(filename, format = "MSEED")
-        elif ext == "reftek":
-            st = read(filename, format = "REFTEK130")
-        elif ext == "sac":
-            st = read(filename, format = "SAC")
-        elif ext in [ "seg2", "sg2" ]:
-            st = read(filename, format = "SEG2")
-        elif ext in [ "segy", "sgy" ]:
-            st = read(filename, format = "SEGY")
-        elif ext == "su":
-            st = read(filename, format = "SU")
-        return st
-    
     def _read_traces(self):
-        st = self._read_file(self.input_dirname.get() + self._current_file)
+        st = self._stread.read_file(self.input_dirname.get() + self._current_file)
         self._starttime = st[0].stats.starttime
         self._traces = np.array([ tr.detrend("constant") for tr in st.traces ])
         self._shape = self._traces.shape
@@ -535,10 +510,15 @@ class PyckerGUI():
         self.plot()
         
     def _man_pick(self, k, index):
+        if self.delay.get():
+            shift = self._delay2samples()
+        else:
+            shift = 0
         if self.taxis_seconds.get():
             index *= self.sampling_rate.get()
         time = self._starttime + index / self.sampling_rate.get()
-        self.picks[self._current_index][k] = Pick(time, index)
+        fs = self.sampling_rate.get()
+        self.picks[self._current_index][k] = Pick(time, index, fs, shift = shift)
         
     def _tobs2str(self, tobs):
         base = np.floor(np.log10(tobs))
@@ -567,10 +547,12 @@ class PyckerGUI():
             return delay_val * fs * 1e-6
         
     def _set_taxis_seconds(self):
+        self.taxis_seconds.set(True)
         self.taxis_samples.set(False)
         self.plot()
         
     def _set_taxis_samples(self):
+        self.taxis_samples.set(True)
         self.taxis_seconds.set(False)
         self.plot()
         

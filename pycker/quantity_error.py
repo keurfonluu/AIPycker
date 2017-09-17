@@ -74,8 +74,8 @@ class QuantityError:
         """
         Save attributes to array.
         
-        Return
-        ------
+        Returns
+        -------
         arr : ndarray
             Output array.
         """
