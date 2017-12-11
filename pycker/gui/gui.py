@@ -14,6 +14,7 @@ from matplotlib.ticker import FormatStrFormatter
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 
 from obspy.signal.filter import lowpass, highpass
+from obspy.core.utcdatetime import UTCDateTime
 
 import numpy as np
 from ..pick import Pick
@@ -73,6 +74,7 @@ class PyckerGUI():
         master.geometry("1200x700")
         master.minsize(1200, 700)
         
+        UTCDateTime.DEFAULT_PRECISION = 9
         default_font = font.nametofont("TkDefaultFont")
         default_font.configure(family = "Helvetica", size = 9)
         master.option_add("*Font", default_font)

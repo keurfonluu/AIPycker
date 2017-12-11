@@ -14,5 +14,5 @@ from .wiggle import wiggle
 from .read_stream import StreamReader
 from .gui import PyckerGUI
 
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 __all__ = [ "Pick", "QuantityError", "wiggle", "StreamReader", "PyckerGUI" ]

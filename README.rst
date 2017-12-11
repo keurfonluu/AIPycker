@@ -7,7 +7,7 @@ Pycker
 Pycker provides user-friendly routines to visualize seismic traces and pick
 first break arrival times. This package requires ObsPy.
 
-:Version: 1.1.0
+:Version: 1.1.1
 :Author: Keurfon Luu
 :Web site: https://github.com/keurfonluu/pycker
 :Copyright: This document has been placed in the public domain.
